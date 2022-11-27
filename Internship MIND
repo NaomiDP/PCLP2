@@ -1,0 +1,405 @@
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 6
+Les 06
+
+Ex1. 
+select ename, hiredate 
+from emp
+where ename != 'BLAKE' and deptno=(select deptno from emp where UPPER(ename)='BLAKE');
+Ex2. 
+select empno, ename, sal
+from emp
+Where sal>(SELECT avg(sal) from emp)
+order by sal desc;
+Ex3.
+	select distinct empno, ename, deptno
+from emp
+where deptno IN (select deptno from emp where INSTR(upper(ename),'T')>0);
+Ex4.
+select distinct ename, deptno, job
+from emp
+where deptno=(select deptno from dept where instr(upper(loc),'DALLAS')>0);
+Ex5.
+	select ename, sal
+from emp
+where mgr=(select empno from emp where INSTR(UPPER(ename), 'KING')>0);
+Ex6.
+	select deptno, ename, job
+from emp
+where deptno=(select deptno from dept where INSTR(UPPER(DNAME), 'SALES')>0);
+Ex7.
+	select distinct empno, ename, sal, deptno
+from emp
+where deptno IN (select deptno from emp where INSTR(upper(ename),'T')>0) and sal>(SELECT avg(sal) from emp);
+
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 7
+Les 07
+
+Ex1. 
+	select ename, deptno, sal, comm
+from emp
+where deptno IN (select deptno from emp where INSTR(UPPER(comm), 'NULL')=0) and sal IN (select sal from emp where INSTR(UPPER(comm), 'NULL')=0);
+Ex2.
+	select distinct e.ename, d.dname, e.sal
+from emp e, dept d	
+where d.deptno=e.deptno and (e.comm, e.sal) IN (
+      		select e.comm, e.sal
+      		from emp e, dept d 
+      		where INSTR(UPPER(loc), 'DALLAS')>0);
+
+sau
+    SELECT ename , deptno , sal , comm
+    FROM   emp
+    WHERE (sal,NVL(comm, -1)) IN
+           (SELECT sal, NVL(comm, -1)
+            FROM emp
+            WHERE deptno=20);
+
+Ex3. 
+	select ename, hiredate, sal
+from emp	
+where (NVL(comm,-1), sal) IN (
+      		select NVL(comm,-1), sal
+      		from emp
+      		where INSTR(UPPER(ename), 'SCOTT')>0);
+
+Ex4.
+	SELECT *
+FROM emp
+WHERE sal > ANY( SELECT sal
+            	  FROM emp
+             	 WHERE job='CLERK')
+ORDER BY sal desc;
+
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 8
+Les 08
+
+Ex1. Fals.
+Ex2. Adevarat.
+Ex3. 
+ALTER session set nls_date_format='mm/dd/yy';
+SELECT  ename ||', '|| job "Employees",  TO_CHAR(hiredate) "hiredate"
+FROM    emp
+WHERE hiredate BETWEEN '&dateA' and '&dateB';
+Ex4.
+	SELECT  upper(ENAME), upper(JOB), upper(dname)
+FROM    emp e, dept d
+where e.deptno=d.deptno;
+Ex5.
+	SELECT  upper(dname) AS "DEPARTMENT NAME", 
+      		     upper(ENAME) AS "EMPLOYEE NAME", 
+       		     Hiredate AS "START DATE", 
+                 sal AS SALARY, 
+ 	                (sal*12) as "ANNUAL SALARY"
+FROM    emp e, dept d
+WHERE upper(loc)='&localitate' AND e.deptno=d.deptno;
+
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 9
+Les 09
+
+Ex1. 
+	CREATE TABLE MY_EMPLOYEE
+    	       (ID NUMBER(2) NOT NULL,
+        LAST_NAME VARCHAR2(10),
+        FIRST_NAME VARCHAR2(10),
+        USERID VARCHAR2(10),
+        SALARY NUMBER(7, 2));
+Ex2. 
+	DESCRIBE MY_EMPLOYEE;
+Ex3. 
+	INSERT INTO MY_EMPLOYEE VALUES ('1','Patel', 'Ralph','rpatel','795');
+Ex4. 
+	INSERT INTO MY_EMPLOYEE(id,Last_Name,First_Name,Userid,Salary) VALUES ('2','Dancs', 'Betty','bdancs','860');
+Ex5. 
+	select * from my_employee;
+Ex6. 
+	INSERT INTO MY_EMPLOYEE(id.nextval, '&Last_Name', '&First_Name', concat(substr('&first_name',1,1), substr('&last_name',1,7), '&salary');
+Ex7. 
+	INSERT INTO MY_EMPLOYEE(id,Last_Name,First_Name,Userid,Salary) VALUES ('3','Biri', 'Ben','bbiri','1100');
+	INSERT INTO MY_EMPLOYEE(id,Last_Name,First_Name,Userid,Salary) VALUES ('4','Newman', 'Chad','cnewman','750');
+Ex8. 
+	select * from my_employee;
+Ex9. 
+	COMMIT;
+Ex10. 
+	UPDATE MY_EMPLOYEE
+SET LAST_NAME='Drexler'
+WHERE id=3;
+Ex11. 
+	UPDATE MY_EMPLOYEE
+SET salary=1000
+WHERE salary<900;
+Ex12. 
+	select * from my_employee;
+Ex13. 
+	DELETE FROM my_employee
+WHERE LAST_NAME='Dancs' and first_name='Betty';
+Ex14. 
+	select * from my_employee;
+Ex15. 
+	COMMIT;
+Ex16. 
+	INSERT INTO MY_EMPLOYEE(id,Last_Name,First_Name,Userid,Salary) VALUES ('5','Ropeburn', 'Audry','aropebur','1550');
+Ex17. 
+	select * from my_employee;
+Ex18. 
+	savepoint upd_done;
+Ex19. 
+	delete from my_employee;
+Ex20. 
+	select * from my_employee;
+Ex21. 
+	ROLLBACK TO SAVEPOINT UPD_DONE;
+Ex22. 
+	select * from my_employee;
+Ex23. 
+	COMMIT;
+
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 10
+Les 10
+
+Ex1. 
+	CREATE TABLE DEPARTMENT
+            (ID NUMBER(7),
+            NAME VARCHAR2(25));
+Ex2. 
+	INSERT INTO DEPARTMENT VALUES (10, 'ACCOUNTING');
+INSERT INTO DEPARTMENT VALUES (20, 'RESEARCH');
+INSERT INTO DEPARTMENT VALUES (30, 'SALES');
+INSERT INTO DEPARTMENT VALUES (40, 'OPERATIONS');
+Ex3. 
+	CREATE TABLE EMPLOYEE 
+       (ID NUMBER(7),
+        LAST_NAME VARCHAR2(25),
+        FIRST_NAME VARCHAR2(25),
+        DEPT_ID NUMBER(7));
+Ex4. 
+	ALTER TABLE EMPLOYEE 
+      MODIFY  (LAST_NAME VARCHAR2(35));
+Ex5. 
+	SELECT * 
+FROM user_tables;   //Cele 2 tabele sunt stocate de dictionarul de date.
+Ex6. 
+	CREATE TABLE EMPLOYEE2 
+       AS
+       SELECT EMPNO as ID, ENAME as LAST_NAME, DEPTNO as DEPT_ID 
+       FROM EMP;
+Ex7. 
+	DROP TABLE EMPLOYEE;
+Ex8.
+RENAME EMPLOYEE2 TO EMPLOYEE;
+Ex9. 
+	COMMENT ON TABLE EMPLOYEE
+IS 'Employee Information';
+
+COMMENT ON TABLE DEPARTMENT
+IS 'Department Informatio';
+
+SELECT *
+FROM user_catalog;
+
+SELECT *
+FROM user_tables;
+
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 11
+Les 11
+Ex1. 
+	alter table EMPLOYEE
+add constraint pk_id_emp primary key (id);
+alter table employee
+enable CONSTRAINT  pk_id_emp;
+Ex2. 
+	alter table Department
+add constraint pk_id_dept primary key (id);
+alter table Department
+enable CONSTRAINT  pk_id_dept;
+Ex3. 
+	alter table employee
+add constraint fk_dept_id_emp FOREIGN KEY (dept_id) REFERENCES department(id);
+Ex4. 
+	select *  from user_constraints;
+Ex5. 
+select DISTINCT object_name, object_type from user_objects
+where lower(object_name)=ANY('employee', 'pk_id_emp', 'department', 'pk_id_dept');
+Ex6. 
+	alter table employee
+add salary number(7);
+
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 12
+Les 12
+
+Ex1. 
+	create view emp_vu as
+select EMPNO, ENAME as EMPLOYEE, DEPTNO FROM EMP;
+Ex2. 
+	SELECT * FROM emp_vu;
+Ex3. 
+	SELECT view_name, text  FROM user_views;
+Ex4. 
+	SELECT employee, deptno  FROM emp_vu;
+Ex5. 
+	create view dept20 as
+select empno as EMPLOYEE_ID, ename as EMPLOYEE, deptno as DEPARTMENT_ID
+from emp
+where deptno='20'
+WITH CHECK OPTION CONSTRAINT dept20_ck;
+Ex6. 
+	select * from dept20;
+Ex7. 
+	update dept20
+	set department_id=10
+	where upper(EMPLOYEE)='SMITH'
+
+	ORA-01402: view WITH CHECK OPTION where-clause violation
+Ex8. 
+	create view salary_vu as
+select e.Ename as Employee, 
+       d.Dname as Department, 
+       e.Sal as Salary, 
+       s.Grade as Grade
+from emp e, dept d, salGrade s
+where e.deptno=d.deptno and e.sal between s.losal and s.hisal;
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 13
+Les 13
+
+Ex1. 
+	CREATE SEQUENCE DEPT_ID_SEQ
+INCREMENT BY 10
+START WITH 60
+MAXVALUE 200
+NOCACHE
+NOCYCLE;
+Ex2. 
+	SELECT sequence_name, max_value, min_value,
+       increment_by, last_number
+FROM user_sequences;
+Ex3. 
+INSERT INTO DEPARTMENT VALUES(DEPT_ID_SEQ.NEXTVAL, '&DEPT_NUME'); -- Education
+INSERT INTO DEPARTMENT VALUES(DEPT_ID_SEQ.NEXTVAL, '&DEPT_NUME'); -- Administration
+Ex4. 
+	create index index_emp
+on EMPLOYEE(dept_id);
+Ex5. 
+	SELECT * FROM user_indexes
+WHERE table_name = 'EMPLOYEE';
+
+
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 14
+Les 14
+
+Ex1.
+Un utilizator, pentru a se putea conecta la un server Oracle, ii trebuie privilegiul de sistem.
+Ex2. 
+	Un utilizator, pentru a putea crea tabele in Oracle, ii trebuie privilegiul de obiect.
+Ex3. 
+Administratorul bazei de date care este un utilizator de nivel înalt are posibilitatea de a acorda accesul utilizatorilor la baza de date si la obiectele sale. Utilizatorilor li se poate da de asemeni privilegiul de a acorda privilegii aditionale altor utilizatori sau unor roluri, cum sunt numite grupurile de privilegii adiacente.
+Ex4. 
+Un DBA poate crea roluri cu ajutorul declaratiei CREATE ROLE, putând astfel transmite mai departe un set de privilegii de sistem sau obiect mai multor utilizatori. Rolurile fac ca acordarea si retragerea de privilegii sa fie mai usor de efectuat.
+Ex5. 
+	Utilizatorii isi pot schimba parola folosind declaratia ALTER USER.
+Ex6. 
+	Da.
+Ex7. 
+	select * from dept;
+	
+
+Pauliuc Naomi-Denisa
+3132B – practica, lectia 15
+Les 15
+
+Ex1.
+	a)
+	create table MEMBER
+(
+       member_id number(10) constraint pk_member_id primary key,
+       last_name varchar2(25),
+       first_name varchar2(25),
+       address varchar2(100),
+       city varchar2(30),
+       phone varchar2(15),
+       join_date date default sysdate
+);
+alter table MEMBER
+add constraint u_key_tipe unique (key_type);
+b)
+create table TITLE
+(
+       Title_id  number(10) constraint nn_key_type not null,  
+       title varchar2(60) constraint nn_title not null,
+       description varchar2(400),
+       rating varchar2(4) constraint ck_rating check(rating in('G','PG','NC17','NR')),
+       category varchar2(20) constraint ck_category check(category in('DRAMA','COMEDY','ACTION','CHILD','SCIFI','DOCUMENTARY')),
+       join_date date
+);
+alter table title
+add constraint pk_key_type primary key (key_type);
+c)
+create table TITLE_copy
+(
+       copy_id number(10) constraint nn_copy_id not null,  
+       title_id  number(10) constraint nn_title_id not null,
+       status varchar2(15) constraint ck_rating check(status in('AVAILABLE','DESTROYED','RENTED','RESERVED'))
+);
+alter table title_COPY
+add constraint pk_COPY_ID primary key (copy_id);
+
+alter table title_COPY
+add constraint fk_title_id FOREIGN key(title_id) references title(title_id);
+
+d)
+create table rental
+(
+       book_date date default sysdate,  
+       member_id  number(10) ,
+       copy_id  number(10), 
+       act_ret_date date,
+       exp_ret_date date,     
+       title_id  number(10)
+);
+
+alter table rental
+add constraint fk_title_copy_id FOREIGN key(title_id) references title(title_id);
+
+alter table rental
+add constraint fk_member_id FOREIGN key(member_id) references member(member_id);
+
+alter table rental
+add constraint fk_copy_id FOREIGN key(copy_id) references title_copy(copy_id);	
+
+alter table rental
+add constraint pk_book_date primary key(book_date);
+
+e)
+create table reservation
+(
+       res_date date constraint pk_res_date primary key,  
+       member_id number(10),
+       title_id number(10)
+);
+
+alter table reservation
+add constraint fk_title_id_r FOREIGN key(title_id) references title(title_id);
+
+alter table reservation
+add constraint fk_member_id_r FOREIGN key(member_id) references member(member_id);
+Ex2. 
+select table_name from user_tables;
+	select constraint_name
+from user_constraints;
+
