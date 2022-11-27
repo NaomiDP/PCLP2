@@ -1,0 +1,1059 @@
+/***************************************************************************//**
+ * @file
+ * @brief Weather station demo for EFM32ZG_STK3200 and Sensors-EXP
+ *******************************************************************************
+ * # License
+ * <b>Copyright 2018 Silicon Laboratories Inc. www.silabs.com</b>
+ *******************************************************************************
+ *
+ * The licensor of this software is Silicon Laboratories Inc. Your use of this
+ * software is governed by the terms of Silicon Labs Master Software License
+ * Agreement (MSLA) available at
+ * www.silabs.com/about-us/legal/master-software-license-agreement. This
+ * software is distributed to you in Source Code format and is governed by the
+ * sections of the MSLA applicable to Source Code.
+ *
+ ******************************************************************************/
+
+#include "em_device.h"
+#include "em_chip.h"
+#include "em_cmu.h"
+#include "em_emu.h"
+#include "em_gpio.h"
+#include "i2cspm.h"
+#include "si7013.h"
+#include "si114x_algorithm.h"
+#include "sl_sleeptimer.h"
+#include "graphics.h"
+#include "em_adc.h"
+#include "bspconfig.h"
+
+#include "em_device.h"
+#include <stdint.h>
+#include "em_chip.h"
+#include "em_cmu.h"
+#include "bsp.h"
+
+#include "capsense.h"
+//#include "display.h"
+//#include "retargettextdisplay.h"
+
+#include "graphics.h"
+#include "em_types.h"
+#include "glib.h"
+#include "dmd.h"
+#include "display.h"
+#include "textdisplay.h"
+#include "retargettextdisplay.h"
+#include "background.h"
+#include <string.h>
+#include <stdio.h>
+
+/***************************************************************************//**
+ * Local defines
+ ******************************************************************************/
+/** Time (in ms) to keep looking for gestures if none are seen. */
+#define GESTURE_TIMEOUT_MS      60000
+/** Time (in ms) between periodic updates of the measurements. */
+#define PERIODIC_UPDATE_MS      2000
+/** Time (in ms) between scrolling updates. Lower means faster scrolling
+ *  between screens. */
+#define ANIMATION_UPDATE_MS     50
+/** Voltage defined to indicate dead battery. */
+#define LOW_BATTERY_THRESHOLD   2800
+
+#define BUTTON1_PORT gpioPortC
+#define BUTTON1_PIN 9
+#define BUTTON2_PORT gpioPortC
+#define BUTTON2_PIN 8
+#define LED2_PORT gpioPortC
+#define LED2_PIN 10
+#define LED1_PORT gpioPortC
+#define LED1_PIN 11
+
+//======================================[define cifre]========================================
+#define DEBOUNCE 3
+#define BLINK 20
+#define DOUA_APASARI 2
+#define O_APASARE 1
+#define TIMP_INTRE_2_APASARI 50
+#define ON 1
+#define OFF 0
+#define VARIATIE_TEMPERATURA 2000
+#define DISPLAYMAX 114
+#define DISPLAYMIN 10
+#define REGLARE_HISTEREZIS 500
+#define NRMAX_CASE 3
+#define NRMIN_CASE 0
+#define RAZA_MIN 10
+#define VAL_DSP 262
+/***************************************************************************//**
+ * Local variables
+ ******************************************************************************/
+/* Variables used by the display callback. */
+static void (*mem_lcd_callback_func)(void*) = 0;
+static void *mem_lcd_callback_arg = 0;
+
+/** This variable is set to true when the user presses PB0. */
+static volatile bool startDemo = false;
+/** This variable is set to true when we are in gesture control mode. */
+static volatile bool demoMode =  false;
+/** This flag tracks if we need to update the display
+ *  (animations or measurements). */
+static GLIB_Context_t glibContext;
+static volatile bool updateDisplay = true;
+/** This flag tracks if we need to perform a new
+ *  measurement. */
+static volatile bool updateMeasurement = true;
+/** Flag that is used whenever we have get an gesture process interrupt. */
+static volatile bool processGestures = false;
+/** Flag that is used to disable gestures after timeout **/
+static volatile bool disableGestures = false;
+/** GUI scrolling offset. */
+static volatile int  xoffset = 0;
+/** GUI scrolling offset. */
+static volatile int  yoffset = 0;
+/** Amount to increment xoffset every ANIMATION_UPDATE_MS */
+static volatile int  xinc            = 0;
+/** Amount to increment yoffset every ANIMATION_UPDATE_MS */
+static volatile int  yinc = 0;
+/** Millisecond tick counter */
+static volatile uint32_t msTicks;
+/** Used to track what happens when the user presses PB0. */
+static int pb0Action = 1;
+/** Flag used to indicate ADC is finished */
+static volatile bool adcConversionComplete = false;
+
+/** Timer used for timing out gesturemode to save power. */
+static sl_sleeptimer_timer_handle_t gestureTimeoutTimerId;
+/** Timer used for counting milliseconds. Used for gesture detection. */
+static sl_sleeptimer_timer_handle_t millisecondsTimerId;
+/** Timer used for periodic update of the measurements. */
+static sl_sleeptimer_timer_handle_t periodicUpdateTimerId;
+/** Timer used for animations (swiping) */
+static sl_sleeptimer_timer_handle_t animationTimerId;
+/** Timer used for periodic maintenance of the display. */
+static sl_sleeptimer_timer_handle_t display_timer;
+
+//=========================PB0==================================================
+int count_blink2=0;
+int count_debounce2 = 0;
+int count_reset2 = 0;
+int led_state2 = 0xFFFFFFFF;
+bool old_state_b2=0;
+bool flag_b2=0;
+bool flag_longpress=0;
+//=========================PB1==================================================
+int count_blink1=0;
+int count_debounce1 = 0;
+int count_reset1 = 0;
+int count_apasari=0;
+int timer=0;
+int led_state1 = 0xFFFFFFFF;
+bool old_state_b1=0;
+bool flag_b1=0;
+bool flag_doublepress=0;
+bool flagd_press=0;
+//===============================p2_PP1===========================================================================
+
+bool b1_apasat=0;
+bool b2_apasat=0;
+int count_p2_buton1=0;
+int count_p2_buton2=0;
+//int hist=0;
+int temperatura1=0;
+char string[100];
+
+bool flag_display=0;
+int hist1=0;
+int count_reset_h=0;
+int count_reset_P=0;
+//===============================
+bool oldi=0;
+int razacerc=0;
+//============================================PP1*********&&**********PP2===========================================
+
+int time1=0;
+int time_reset1=0;
+bool old_press1=0;
+bool flag_press1=0;
+
+int time2=0;
+int time_reset2=0;
+bool old_press2=0;
+bool flag_press2=0;
+
+//===============================================problema_3===========================================================
+int y=64;
+int x=64;
+
+/***************************************************************************//**
+ * Local prototypes
+ ******************************************************************************/
+static void gpioSetup(void);
+void PB0_handler(void);
+static void disableGestureMode(void);
+static void enableGestureMode(void);
+static void GestureTimeoutCallback(sl_sleeptimer_timer_handle_t *handle, void *data);
+static void msTicksCallback(sl_sleeptimer_timer_handle_t *handle, void *data);
+static void handleGestures(void);
+static void periodicUpdateCallback(sl_sleeptimer_timer_handle_t *handle, void *data);
+static void animationUpdateCallback(sl_sleeptimer_timer_handle_t *handle, void *data);
+static void display_callback(sl_sleeptimer_timer_handle_t *handle, void *data);
+static uint32_t checkBattery (void);
+static void adcInit(void);
+static void Delay(uint32_t dlyTicks);
+
+/***************************************************************************//**
+ * @brief  Helper function to perform data measurements.
+ ******************************************************************************/
+
+
+/***************************************************************************//**
+ * @brief Delays number of msTick Systicks (typically 1 ms)
+ * @param dlyTicks Number of ticks to delay
+ ******************************************************************************/
+
+
+
+static int performMeasurements(uint32_t *rhData, int32_t *tData,
+                               uint16_t *uvData, int *objectDetect, uint32_t *vBat)
+{
+  *vBat = checkBattery();
+  Si7013_MeasureRHAndTemp(I2C0, SI7013_ADDR, rhData, tData);
+  Si1147_MeasureUVAndObjectPresent(I2C0, SI1147_ADDR, uvData, objectDetect);
+  return 0;
+}
+
+
+void SysTick_Handler(void)
+{
+  msTicks++;       /* increment counter necessary in Delay()*/
+}
+
+static void Delay(uint32_t dlyTicks)
+{
+  uint32_t curTicks;
+
+  curTicks = msTicks;
+  while ((msTicks - curTicks) < (dlyTicks) );
+}
+
+//======================================functie_pentru_PB0_apasarelunga==================================================
+void PB0_apasarelunga()
+{
+	bool live_button2_state = GPIO_PinInGet (BUTTON2_PORT, BUTTON2_PIN);
+	GPIO_PinModeSet (BUTTON2_PORT, BUTTON2_PIN, gpioModeInput, OFF);
+
+	if((live_button2_state == OFF) && (old_state_b2==ON) )
+		  {
+			  flag_b2=ON;
+		  }
+		  if(live_button2_state == OFF)
+		  {
+			  if(flag_b2==ON)
+			  {
+				  count_debounce2++;
+				  if(count_debounce2 == DEBOUNCE && flag_longpress != ON)
+				  {
+					  GPIO_PinModeSet (LED2_PORT, LED2_PIN, gpioModePushPull, led_state2);
+					  led_state2 = (~(led_state2));
+					  count_reset2 = 0;
+				  }
+				  if(count_debounce2 > 10)
+				  {
+					  if(flag_longpress == ON)
+					  {
+						  flag_longpress = OFF;
+						  GPIO_PinModeSet (LED2_PORT, LED2_PIN, gpioModePushPull, OFF);
+					  }
+					  else
+					  {
+						  flag_longpress = ON;
+					  }
+					  flag_b2 = OFF;
+					  count_reset2 = 0;
+				  }
+			  }
+		  }
+		  else
+		  {
+			  count_reset2++;
+			  if(count_reset2 == DEBOUNCE)
+			  {
+				  count_debounce2 = 0;
+				  flag_b2 = OFF;
+			  }
+		  }
+
+		  old_state_b2 = live_button2_state;
+
+		  if(flag_longpress == ON)
+		  {
+			  count_blink2++;
+			  if(count_blink2 == BLINK)
+			  {
+				  GPIO_PinModeSet (LED2_PORT, LED2_PIN, gpioModePushPull, led_state2);
+				  led_state2 = (~(led_state2));
+				  count_blink2 = 0;
+			  }
+		  }
+}
+
+//======================================functie_pentru_PB1_apasareDubla==================================================
+void PB1_apasareDubla()
+{
+	GPIO_PinModeSet (BUTTON1_PORT, BUTTON1_PIN, gpioModeInput, OFF);
+	bool live_button1_state = GPIO_PinInGet (BUTTON1_PORT, BUTTON1_PIN);
+
+		  if((live_button1_state == OFF) && (old_state_b1 == ON) )
+		  {
+			  flag_b1=ON;
+			  count_apasari++;
+			  timer=0;
+		  }
+
+		  if(live_button1_state == OFF)
+		  {
+		  //debounce
+			  if(flag_b1==ON)
+			  {
+				  count_debounce1++;
+				  if(count_debounce1 == DEBOUNCE && flag_doublepress != ON)
+				  {
+					  GPIO_PinModeSet (LED1_PORT, LED1_PIN, gpioModePushPull, led_state1);
+					  led_state1 = (~(led_state1));
+				  }
+			  }
+			  count_reset1 = 0;
+		  }
+		  else
+		  {
+			  count_debounce1 = 0;
+			  count_reset1++;
+			  if(count_reset1 == DEBOUNCE)
+			  {
+				  count_debounce1 = 0;
+				  flag_b1 = OFF;
+			  }
+		  }
+
+		  if(count_apasari == O_APASARE)
+		  {
+			  timer++;
+			  if(timer > TIMP_INTRE_2_APASARI)
+			  {
+				  count_apasari=0;
+				  timer = 0;
+			  }
+		  }
+		  if(count_apasari == DOUA_APASARI)
+		  {
+			  if(flag_doublepress == ON)
+			  {
+				  flag_doublepress = OFF;
+				  GPIO_PinModeSet(LED1_PORT, LED1_PIN, gpioModePushPull, OFF);
+			  }
+			  else
+			  {
+				  flag_doublepress=ON;
+			  }
+			  timer=0;
+			  count_apasari=0;
+		  }
+		  old_state_b1 = live_button1_state;
+
+		  if(flag_doublepress == ON)
+		  {
+			  count_blink1++;
+			  if(count_blink1 == BLINK)
+			  {
+				  GPIO_PinModeSet (LED1_PORT, LED1_PIN, gpioModePushPull, led_state1);
+				  led_state1 = (~(led_state1));
+				  count_blink1 = 0;
+			  }
+		  }
+}
+
+//========================================================================================
+
+int Hist()
+{
+	static int histerezis=0;
+	static int h_prag=22000;
+
+	GPIO_PinModeSet (BUTTON1_PORT, BUTTON1_PIN, gpioModeInput, OFF);
+	bool live_button1_state = GPIO_PinInGet (BUTTON1_PORT, BUTTON1_PIN);
+
+	GPIO_PinModeSet (BUTTON2_PORT, BUTTON2_PIN, gpioModeInput, OFF);
+	bool live_button2_state = GPIO_PinInGet (BUTTON2_PORT, BUTTON2_PIN);
+	////////////////////////////////////scadere////////////////////////////////////
+	if( live_button1_state == OFF && old_state_b1 == ON)
+	{
+		b1_apasat=ON;
+	}
+
+	if(live_button1_state == OFF)
+	{
+		if(b1_apasat == ON)
+		{
+			count_reset_h=0;
+			count_p2_buton1++;
+			if(count_p2_buton1 == DEBOUNCE)
+			{
+				histerezis=histerezis+REGLARE_HISTEREZIS;
+				if(histerezis>=VARIATIE_TEMPERATURA)
+				{
+					histerezis=0;
+				}
+				b1_apasat=OFF;
+			}
+		}
+	}
+	else
+	{
+		count_reset_h++;
+		if(count_reset_h==DEBOUNCE)
+		{
+			b1_apasat=OFF;
+			count_p2_buton1=0;
+		}
+		count_p2_buton1=0;
+		b1_apasat=OFF;
+	}
+	old_state_b1=live_button1_state;
+	////////////////////////////////////crestere////////////////////////////////////
+	if(live_button2_state == OFF && old_state_b2 == ON)
+	{
+		b2_apasat=ON;
+	}
+	if(live_button2_state == OFF)
+	{
+		if(b2_apasat == ON)
+		{
+			count_p2_buton2++;
+			count_reset_P=0;
+			if(count_p2_buton2 == DEBOUNCE)
+			{
+				if(h_prag==30000)
+				{
+					h_prag=19000;
+				}
+				histerezis=histerezis+REGLARE_HISTEREZIS;
+				b2_apasat=OFF;
+			}
+		}
+	}
+	else
+	{
+		count_reset_P++;
+		if(count_reset_P==DEBOUNCE)
+		{
+			b2_apasat=OFF;
+			count_p2_buton2=0;
+		}
+		count_p2_buton2=0;
+		b2_apasat=OFF;
+	}
+
+	old_state_b2=live_button2_state;
+
+	return histerezis;
+}
+
+void seteaza_temperartura(int tempData, int hist)
+{
+	if(tempData > hist + VARIATIE_TEMPERATURA)
+	{
+		GPIO_PinModeSet(LED1_PORT, LED1_PIN, gpioModePushPull, ON);
+		GPIO_PinModeSet(LED2_PORT, LED2_PIN, gpioModePushPull, OFF);
+		GLIB_drawString(&glibContext, "H prea mica!", 70, 15, 90, 0);
+	}
+	else
+	{
+		GPIO_PinModeSet(LED1_PORT, LED1_PIN, gpioModePushPull, OFF);
+
+	}
+	if(tempData < hist - VARIATIE_TEMPERATURA)
+
+			{
+				GPIO_PinModeSet(LED2_PORT, LED2_PIN, gpioModePushPull, ON);
+				GPIO_PinModeSet(LED1_PORT, LED1_PIN, gpioModePushPull, OFF);
+				GLIB_drawString(&glibContext, "H prea mare!", 70, 15, 90, 0);
+			}
+			else
+			{
+
+				GPIO_PinModeSet(LED2_PORT, LED2_PIN, gpioModePushPull, OFF);
+			}
+
+}
+
+//===============================[crestere_i]===================================
+
+int crestere_itouch(int i)
+{
+	CAPSENSE_Sense();
+    bool press1=CAPSENSE_getPressed(BUTTON1_CHANNEL);
+	if( press1==true && old_press1==false)
+	  {
+		  flag_press1=ON;
+	  }
+	  if( press1==true)
+	  {
+		  time1++;
+		  time_reset1=0;
+		  if(time1==DEBOUNCE && i < NRMAX_CASE)
+		  {
+			  i++;
+			  flag_press1=OFF;
+		  }
+	  }
+	  else
+	  {
+		  time_reset1++;
+		  if(time_reset1==DEBOUNCE)
+		  {
+			  time1=0;
+			  flag_press1=OFF;
+		  }
+	  }
+	  old_press1 = press1;
+	  return i;
+}
+
+//=============================================================================
+
+int scadere_itouch(int i)
+{
+    CAPSENSE_Sense();
+    bool press2=CAPSENSE_getPressed(BUTTON0_CHANNEL);
+	  if( press2==true && old_press2==false)
+	  {
+		  flag_press2=ON;
+	  }
+	  if( press2==true)
+	  {
+		  if(flag_press2==ON)
+		  {
+			  time2++;
+			  time_reset2=0;
+			  if(time2==DEBOUNCE && i > NRMIN_CASE)
+			  {
+				  i--;
+				  flag_press2=OFF;
+			  }
+		  }
+	  }
+	  else
+	  {
+		  time_reset2++;
+		  if(time_reset2==DEBOUNCE)
+		  {
+			  time2=0;
+			  flag_press2=OFF;
+		  }
+	  }
+	  old_press2 = press2;
+	  return i;
+}
+//==============================================================================
+
+/***************************************************************************//**
+ * @brief  Main function
+ ******************************************************************************/
+int main(void)
+{
+  I2CSPM_Init_TypeDef i2cInit = I2CSPM_INIT_DEFAULT;
+  uint32_t         rhData;
+  bool             si7013_status, si1147_status;
+  int32_t          tempData;
+  uint16_t         uvData;
+  int              objectDetect;
+  int              objectDetectPrevious = 1;
+  int              offset;
+  uint32_t         vBat = 3300;
+  bool             lowBatPrevious = true;
+  bool             lowBat = false;
+  EMSTATUS status;
+  int i=0;
+  int oldrazacerc = 300;
+
+  CHIP_Init();
+
+  gpioSetup();
+  adcInit();
+
+  if (SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / 1000)) {
+      while (1) ;
+    }
+  CMU_ClockEnable(cmuClock_HFLE, true);
+  CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_LFXO);
+  DISPLAY_Init();
+  sl_sleeptimer_init();
+
+  GRAPHICS_Init();
+  //==============================================================================================================
+  I2CSPM_Init(&i2cInit);
+
+  CAPSENSE_Init();
+
+  si7013_status = Si7013_Detect(I2C0, SI7013_ADDR, NULL);
+  si1147_status = Si1147_Detect_Device(I2C0, SI1147_ADDR);
+  GRAPHICS_ShowStatus(si1147_status, si7013_status, false, false);
+  Si1147_ConfigureDetection(I2C0, SI1147_ADDR, true);
+  sl_sleeptimer_start_periodic_timer_ms(&periodicUpdateTimerId, PERIODIC_UPDATE_MS, periodicUpdateCallback, NULL, 0, 0);
+
+  updateDisplay = true;
+  demoMode = false;
+
+    if (DISPLAY_EMSTATUS_OK != status) {
+      while (1);
+    }
+    status = DMD_init(0);
+    if (DMD_OK != status) {
+      while (1)
+        ;
+    }
+
+    status = GLIB_contextInit(&glibContext);
+    if (GLIB_OK != status) {
+      while (1)
+        ;
+    }
+    glibContext.backgroundColor = Black;
+    glibContext.foregroundColor = White;
+
+    enableGestureMode();
+
+  while (1)
+  {
+	      CAPSENSE_Sense();
+	      i=crestere_itouch(i);
+	      i=scadere_itouch(i);
+          //==================================================================================================================
+		  if(i != oldi)
+		  {
+			  GPIO_PinModeSet(LED1_PORT, LED1_PIN, gpioModePushPull, OFF);
+			  GPIO_PinModeSet(LED2_PORT, LED2_PIN, gpioModePushPull, OFF);
+		  }
+		  switch (i)
+		  {
+		  case 0:
+			  GLIB_clear(&glibContext);
+			  PB0_apasarelunga();
+			  PB1_apasareDubla();
+			  GRAPHICS_TitluP1(xoffset, yoffset);
+			  DMD_updateDisplay();
+			  oldi=0;
+			  break;
+
+		  case 1:
+			  performMeasurements(&rhData, &tempData, &uvData,&objectDetect, &vBat);
+			  GLIB_clear(&glibContext);
+			  GRAPHICS_DrawTemperatureC(xoffset, yoffset, tempData);
+			  GRAPHICS_DrawTemperatureF(xoffset, yoffset, tempData);
+
+			  Hist();
+			  hist1=Hist();
+
+			  GRAPHICS_CreateString(string, Hist());
+			  GLIB_drawString(&glibContext, string , strlen(string), 70, 10, 0);
+			  GLIB_drawString(&glibContext, "Hist:" , strlen(string), 15, 10, 0);
+
+			  seteaza_temperartura(tempData, Hist());
+			  oldi=1;
+			  DMD_updateDisplay();
+			  break;
+
+		  case 2:
+			  GPIO_PinModeSet(LED1_PORT, LED1_PIN, gpioModePushPull, OFF);
+			  GPIO_PinModeSet(LED2_PORT, LED2_PIN, gpioModePushPull, OFF);
+
+			  razacerc = GetAvgRaza() ;
+
+			  razacerc = (razacerc - VAL_DSP)/2 + RAZA_MIN;
+
+			  GLIB_clear(&glibContext);
+			  GLIB_drawCircleFilled(&glibContext, x, y, razacerc);
+			  handleGestures();
+
+			  if(yinc == 1)
+			  {
+				  if(y > DISPLAYMIN)
+				  {
+					  y = y - 3;
+					  GLIB_clear(&glibContext);
+					  GLIB_drawCircleFilled(&glibContext, x, y, razacerc);
+				  }
+			  }
+			  if(yinc == -1)
+			  {
+				  if(y < DISPLAYMAX)
+				  {
+					  y = y + 3;
+					  GLIB_clear(&glibContext);
+					  GLIB_drawCircleFilled(&glibContext, x, y, razacerc);
+				  }
+			  }
+			  if(xinc == 1)
+			  {
+				  if(x > DISPLAYMIN)
+				  {
+					  x = x - 3;
+					  GLIB_clear(&glibContext);
+					  GLIB_drawCircleFilled(&glibContext, x, y, razacerc);
+				  }
+			  }
+			  if(xinc == -1)
+			  {
+				  if(x < DISPLAYMAX)
+				  {
+					  x = x + 3;
+					  GLIB_clear(&glibContext);
+					  GLIB_drawCircleFilled(&glibContext, x, y, razacerc);
+				  }
+			  }
+			  DMD_updateDisplay();
+			  break;
+		  }
+	      Delay(10);
+  }
+}
+
+/***************************************************************************//**
+ * @brief This function is called whenever we want to measure the supply v.
+ *        It is reponsible for starting the ADC and reading the result.
+ ******************************************************************************/
+static uint32_t checkBattery(void)
+{
+  uint32_t vData;
+  /* Sample ADC */
+  adcConversionComplete = false;
+  ADC_Start(ADC0, adcStartSingle);
+  while (!adcConversionComplete) EMU_EnterEM1();
+  vData = ADC_DataSingleGet(ADC0);
+  return vData;
+}
+
+/***************************************************************************//**
+ * @brief ADC Interrupt handler (ADC0)
+ ******************************************************************************/
+void ADC0_IRQHandler(void)
+{
+  uint32_t flags;
+
+  /* Clear interrupt flags */
+  flags = ADC_IntGet(ADC0);
+  ADC_IntClear(ADC0, flags);
+
+  adcConversionComplete = true;
+}
+
+/***************************************************************************//**
+ * @brief ADC Initialization
+ ******************************************************************************/
+static void adcInit(void)
+{
+  ADC_Init_TypeDef       init       = ADC_INIT_DEFAULT;
+  ADC_InitSingle_TypeDef initSingle = ADC_INITSINGLE_DEFAULT;
+
+  /* Enable ADC clock */
+  CMU_ClockEnable(cmuClock_ADC0, true);
+
+  /* Initiate ADC peripheral */
+  ADC_Init(ADC0, &init);
+
+  /* Setup single conversions for internal VDD/3 */
+  initSingle.acqTime = adcAcqTime16;
+  initSingle.input   = adcSingleInpVDDDiv3;
+  ADC_InitSingle(ADC0, &initSingle);
+
+  /* Manually set some calibration values */
+  ADC0->CAL = (0x7C << _ADC_CAL_SINGLEOFFSET_SHIFT) | (0x1F << _ADC_CAL_SINGLEGAIN_SHIFT);
+
+  /* Enable interrupt on completed conversion */
+  ADC_IntEnable(ADC0, ADC_IEN_SINGLE);
+  NVIC_ClearPendingIRQ(ADC0_IRQn);
+  NVIC_EnableIRQ(ADC0_IRQn);
+}
+
+/***************************************************************************//**
+ * @brief This function is called whenever a new gesture needs to be processed.
+ *        It is reponsible for setting up the animations.
+ ******************************************************************************/
+static void handleGestures(void)
+{
+  gesture_t gestureInput = NONE;
+
+  /* get prox sensor sample */
+  gestureInput = Si1147_NewSample(I2C0, SI1147_ADDR, msTicks);
+  if (gestureInput != NONE) {
+    /* Gesture detected, restart timer */
+    sl_sleeptimer_restart_timer_ms(&gestureTimeoutTimerId, GESTURE_TIMEOUT_MS, GestureTimeoutCallback, NULL, 0, 0);
+    if ((gestureInput == UP) || (gestureInput == DOWN)) {
+      if (xoffset == 0) {
+        if (gestureInput == UP) {
+          yinc = 1;
+        } else {
+          yinc = -1;
+        }
+      }
+    }
+    if (gestureInput == RIGHT) {
+      xinc = -1;
+    }
+    if (gestureInput == LEFT) {
+      xinc = 1;
+    }
+    updateDisplay = true;
+    /* This timer runs the animations. E.g if an animation is
+     * active this will retrigger a redraw. */
+    sl_sleeptimer_restart_periodic_timer_ms(&animationTimerId, ANIMATION_UPDATE_MS, animationUpdateCallback, NULL, 0, 0);
+  }
+}
+
+/***************************************************************************//**
+ * @brief Enable gesture mode.
+ ******************************************************************************/
+static void enableGestureMode(void)
+{
+  Si1147_ConfigureDetection(I2C0, SI1147_ADDR, false);
+  Si1147_SetInterruptOutputEnable(I2C0, SI1147_ADDR, true);
+
+  /* Start timer to disable gestures */
+  sl_sleeptimer_restart_timer_ms(&gestureTimeoutTimerId, GESTURE_TIMEOUT_MS, GestureTimeoutCallback, NULL, 0, 0);
+  /* Start timer to count milliseconds - used for gesture detection */
+  sl_sleeptimer_restart_periodic_timer_ms(&millisecondsTimerId, 5, msTicksCallback, NULL, 0, 0);
+}
+
+/***************************************************************************//**
+ * @brief Disable gesture mode.
+ * @param id
+ *   Timer ID that triggered this event. Not used, only there for
+ *   compatability with RTC driver.
+ ******************************************************************************/
+static void disableGestureMode(void)
+{
+  Si1147_ConfigureDetection(I2C0, SI1147_ADDR, true);
+
+  /* Stop counting milliseconds */
+  sl_sleeptimer_stop_timer(&millisecondsTimerId);
+  /* Increment timer an arbitrary amount of time to account for timer stopping*/
+  msTicks += 1000;
+  /* This timer runs the animations. E.g if an animation is
+   * active this will retrigger a redraw. */
+  sl_sleeptimer_stop_timer(&animationTimerId);
+}
+
+/***************************************************************************//**
+ * @brief Callback function for gesture timeout
+ ******************************************************************************/
+static void GestureTimeoutCallback(sl_sleeptimer_timer_handle_t *handle, void *data)
+{
+  (void) handle;
+  (void) data;
+  disableGestures = true;
+  demoMode = false;
+}
+
+/***************************************************************************//**
+ * @brief Setup GPIO interrupt for pushbuttons.
+ *****************************************************************************/
+static void gpioSetup(void)
+{
+  /* Enable GPIO clock */
+  CMU_ClockEnable(cmuClock_GPIO, true);
+
+  /* Configure PB0 as input and enable interrupt  */
+  GPIO_PinModeSet(BSP_GPIO_PB0_PORT, BSP_GPIO_PB0_PIN, gpioModeInputPull, 1);
+  GPIO_IntConfig(BSP_GPIO_PB0_PORT, BSP_GPIO_PB0_PIN, false, true, true);
+
+  /* Configure PB1 as input and enable interrupt */
+  GPIO_PinModeSet(BSP_GPIO_PB1_PORT, BSP_GPIO_PB1_PIN, gpioModeInputPull, 1);
+  GPIO_IntConfig(BSP_GPIO_PB1_PORT, BSP_GPIO_PB1_PIN, false, true, true);
+
+  NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+  NVIC_EnableIRQ(GPIO_EVEN_IRQn);
+
+  NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+  NVIC_EnableIRQ(GPIO_ODD_IRQn);
+
+  /* Configure PD4 as pushpull. (5v enable signal) */
+  GPIO_PinModeSet(gpioPortD, 4, gpioModePushPull, 0);
+  GPIO_PinOutClear(gpioPortD, 4);
+
+  /* Configure PD5 as input and enable interrupt - proximity interrupt. */
+  /* Interrupt is active low */
+  GPIO_PinModeSet(gpioPortD, 5, gpioModeInputPull, 1);
+  GPIO_IntConfig(gpioPortD, 5, false, true, true);
+
+  /*Enable 5V supply to add-on board. */
+  GPIO_PinOutSet(gpioPortD, 4);
+}
+
+/***************************************************************************//**
+ * @brief Unified GPIO Interrupt handler (pushbuttons)
+ *        PB0 Switches units within a measurement display
+ *        PB1 Starts the demo (quit splashscreen)
+ *****************************************************************************/
+void GPIO_Unified_IRQ(void)
+{
+  /* Get and clear all pending GPIO interrupts */
+  uint32_t interruptMask = GPIO_IntGet();
+  GPIO_IntClear(interruptMask);
+
+  /* Act on interrupts */
+  if (interruptMask & (1 << BSP_GPIO_PB0_PIN)) {
+    /* PB0: Switch units within display*/
+    PB0_handler();
+  }
+
+  if (interruptMask & (1 << BSP_GPIO_PB1_PIN)) {
+    /* PB1: Start the demo */
+    startDemo = true;
+  }
+
+  if (interruptMask & (1 << 5)) {
+    /* Interrupt from Si1147 on PD5 */
+    processGestures = true;
+  }
+}
+
+/***************************************************************************//**
+ * @brief GPIO Interrupt handler for even pins
+ *****************************************************************************/
+void GPIO_EVEN_IRQHandler(void)
+{
+  GPIO_Unified_IRQ();
+}
+
+/***************************************************************************//**
+ * @brief GPIO Interrupt handler for odd pins
+ *****************************************************************************/
+void GPIO_ODD_IRQHandler(void)
+{
+  GPIO_Unified_IRQ();
+}
+
+/***************************************************************************//**
+ * @brief PB0 Interrupt handler
+ ******************************************************************************/
+void PB0_handler(void)
+{
+  if (xoffset == 0) {
+    pb0Action = 1;
+  }
+  if (xoffset == 32) {
+    pb0Action = -1;
+  }
+  updateDisplay = true;
+  /* This timer runs the animations. E.g if an animation is
+   * active this will retrigger a redraw. */
+  sl_sleeptimer_restart_periodic_timer_ms(&animationTimerId, ANIMATION_UPDATE_MS, animationUpdateCallback, NULL, 0, 0);
+  xinc          = pb0Action;
+  startDemo     = true;
+}
+
+/***************************************************************************//**
+ * @brief   The actual callback for Memory LCD toggling
+ * @param[in] handle
+ *   The handle of the sleeptimer timer (not used)
+ ******************************************************************************/
+static void display_callback(sl_sleeptimer_timer_handle_t *handle, void *data)
+{
+  (void) handle;
+  (void) data;
+  mem_lcd_callback_func(mem_lcd_callback_arg);
+}
+
+/***************************************************************************//**
+ * @brief   Register a callback function at the given frequency.
+ *
+ * @param[in] pFunction  Pointer to function that should be called at the
+ *                       given frequency.
+ * @param[in] argument   Argument to be given to the function.
+ * @param[in] frequency  Frequency at which to call function at.
+ *
+ * @return  always return 0.
+ ******************************************************************************/
+int RtcIntCallbackRegister(void (*pFunction)(void*),
+                           void* argument,
+                           unsigned int frequency)
+{
+  mem_lcd_callback_func = pFunction;
+  mem_lcd_callback_arg  = argument;
+  uint32_t ticks = sl_sleeptimer_get_timer_frequency() / frequency;
+  sl_sleeptimer_start_periodic_timer(&display_timer, ticks, display_callback, NULL, 0, 0);
+  return 0;
+}
+
+/***************************************************************************//**
+ * @brief Callback used to count between measurement updates
+ ******************************************************************************/
+static void periodicUpdateCallback(sl_sleeptimer_timer_handle_t *handle, void *data)
+{
+  (void) handle;
+  (void) data;
+  updateDisplay = true;
+  updateMeasurement = true;
+}
+
+/***************************************************************************//**
+ * @brief Callback used to count milliseconds using gestures
+ ******************************************************************************/
+static void msTicksCallback(sl_sleeptimer_timer_handle_t *handle, void *data)
+{
+  (void) handle;
+  (void) data;
+  msTicks += 5;
+}
+
+/***************************************************************************//**
+ * @brief Callback used to drive gesture animations.
+ *        e.g. the sliding window effect.
+ ******************************************************************************/
+static void animationUpdateCallback(sl_sleeptimer_timer_handle_t *handle, void *data)
+{
+  (void) handle;
+  (void) data;
+  int inc;
+  if (!updateDisplay) {
+    if (xinc != 0) {
+      inc = xinc;
+      xoffset += inc;
+      if (xoffset < -16) {
+        xoffset = 32;
+      }
+      if (xoffset > 32) {
+        xoffset = -16;
+      }
+      if ((xoffset == 16) || (xoffset == 32) || (xoffset == 0)) {
+        xinc = 0;
+        /* This timer runs the animations. E.g if an animation is
+         * active this will retrigger a redraw. */
+        sl_sleeptimer_stop_timer(&animationTimerId);
+      }
+
+      updateDisplay = true;
+    }
+    if (yinc != 0) {
+      inc = yinc;
+      yoffset += inc;
+      if (yoffset < -16) {
+        yoffset = 16;
+      }
+      if (yoffset > 16) {
+        yoffset = -16;
+      }
+      if ((yoffset == 16) || (yoffset == 0)) {
+        yinc = 0;
+        /* This timer runs the animations. E.g if an animation is
+         * active this will retrigger a redraw. */
+        sl_sleeptimer_stop_timer(&animationTimerId);
+      }
+
+      updateDisplay = true;
+    }
+  }
+}
