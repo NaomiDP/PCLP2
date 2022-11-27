@@ -1,0 +1,727 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <conio.h>
+#include <string.h>
+
+#define TRUE 1
+#define FALSE 0
+
+
+void intro1()
+{
+    printf("\n\n\n                           Unchiul George si-a cumparat 14 ari de pamant intr-un sat, ");
+    printf("\n                                      la aproximativ 10-15 km de oras.");
+    printf("\n                Dupa un timp indelungat de munca, acesta a reusit sa-si construiasca o casa,");
+    printf("\n    iar in spatele acesteia a hotarat sa cultive alimente precum: porumb, cartofi, zmeura, capsuni, rosii etc.");
+}
+
+
+void intro2()
+{
+    printf("\n\n\n             Observa faptul ca langa casa lui se afla foarte mult spatiu liber unde creste doar iarba");
+    printf("\n                  asa ca acesta s-a gandit sa-si planteze o mica livada de-a lungul gardului.");
+    printf("\n        Acesta merge la pepiniera din zona pentru a cumpara diferiti pomi, potriviti pentru tipul sau de sol.");
+    printf("\n                                          Fiecare pom are atasat un numar.");
+}
+
+
+void informatii()
+{
+    printf("\n\n\n\tDe exemplu, de la:");
+    printf("\n\t     -1 la 5 sunt notati merii 'Golden Delicious',");
+    printf("\n\t     -5 la 10 merii 'Jonathan',");
+    printf("\n\t     -11 la 20 ciresii,");
+    printf("\n\t     -21 la 30 prunii,");
+    printf("\n\t     -31 la 40 gutuii,");
+    printf("\n\t     -41 la 50 cocotierii,");
+    printf("\n\t     -51 la 60 perii,");
+    printf("\n\t     -61 la 70 nucii,");
+    printf("\n\t     -71 la 80 portocalii,");
+    printf("\n\t     -81 la 90 visinii,");
+    printf("\n\t     -91 la 99 caisii.");
+    printf("\n\tPlantele care au un numar ce depaseste 99 nu sunt pomi.");
+    printf("\n\tPot exista doi sau mai multi pomi cu acelasi numar.\n\tCodul ne ajuta sa vedem din ce categorie face parte fiecare pom.");
+    printf("\n\tAvand in considerare lista data alege ce fel de pomi sa plandeze unchiul George pe terenul sau.\n\n\n\n\n");
+}
+
+
+char *option_lst[]= {"L.Planteaza primul pom",
+                     "C.Citeste un codul unui pom si il introduce in lista L",
+                     "A.Afiseazatoti pomii plantati",
+                     "S.Cauta daca s-a plantat un pom dupa codul dat",
+                     "V.Afiseaza numarul de pomi din fiecare soi\n"
+                     "1.Afiseaza numarul de meri 'Golden Delicious'\n"
+                     "2.Afiseaza numarul de meri 'Jonathan'\n"
+                     "3.Afiseaza numarul de ciresi\n"
+                     "4.Afiseaza numarul de pruni\n"
+                     "5.Afiseaza numarul de gutui\n"
+                     "6.Afiseaza numarul de peri\n"
+                     "7.Afiseaza numarul de nuci\n"
+                     "8.Afiseaza numarul de visini\n"
+                     "9.Afiseaza numarul de caisi\n"
+                     "E.Elimina un copac",
+                     "?.Doriti sa revedeti codurile pomilor? Introduceti '?'\n"
+                     "Y.Doriti sa revedeti povestea? Introduceti 'Y'\n"
+                     "I.Informatii despre autor",
+                     "X.Terminare program"
+                    };
+
+
+typedef struct s_nod
+{
+    int info;
+    struct s_nod *urm;
+} nod;
+
+
+nod *start=NULL;
+nod *indexN;
+nod *tmpN;
+int x;
+int k, is_found;
+
+
+int list_count()//returneaza numarul de elemente din lista
+{
+    int res=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        res++;
+        indexN=indexN->urm;
+    }
+    return res;
+}
+
+
+void list_print()//afiseaza lista
+{
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        printf("%d ", indexN->info);
+        indexN=indexN->urm;
+    }
+}
+
+
+void numar_pomi()
+{
+    int nrm=0, nrci=0, nrpr=0, nrg=0, nrp=0, nrn=0, nrv=0, nrca=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>0 && indexN->info<=10)
+            nrm++;
+        else if(indexN->info>=11 && indexN->info<=20)
+            nrci++;
+        else if(indexN->info>=21 && indexN->info<=30)
+            nrpr++;
+        else if(indexN->info>=31 && indexN->info<=40)
+            nrg++;
+        else if(indexN->info>=51 && indexN->info<=60)
+            nrp++;
+        else if(indexN->info>=61 && indexN->info<=70)
+            nrn++;
+        else if(indexN->info>=81 && indexN->info<=90)
+            nrv++;
+        else if(indexN->info>=91 && indexN->info<100)
+            nrca++;
+        indexN=indexN->urm;
+    }
+    printf("Ati plantat %d meri\nAti plantat %d ciresi\nAti plantat %d pruni\nAti plantat %d gutui\nAti plantat %d peri\nAti plantat %d nuci\nAti plantat %d visini\nAti plantat %d caisi", nrm, nrci, nrpr, nrg, nrp, nrn, nrv, nrca);
+    getch();
+}
+
+
+void numar_mg()
+{
+    int nr=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>0 && indexN->info<=5)
+            nr++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d meri 'Golden Delicious'", nr);
+    getch();
+}
+
+
+void numar_mj()
+{
+    int nr=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>5 && indexN->info<=10)
+            nr++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d meri 'Jonathan'", nr);
+    getch();
+}
+
+
+void numar_ciresi()
+{
+    int nr=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>=11 && indexN->info<=20)
+            nr++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d ciresi", nr);
+    getch();
+}
+
+
+void numar_pruni()
+{
+    int nr=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>=21 && indexN->info<=30)
+            nr++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d pruni", nr);
+    getch();
+}
+
+void numar_gutui()
+{
+    int g=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>=31 && indexN->info<=40)
+            g++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d gutui", g);
+    getch();
+}
+
+
+void numar_peri()
+{
+    int p=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>=51 && indexN->info<=60)
+            p++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d peri", p);
+    getch();
+}
+
+
+void numar_nuci()
+{
+    int n=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>=61 && indexN->info<=70)
+            n++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d nuci", n);
+    getch();
+}
+
+
+void numar_visini()
+{
+    int v=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>=81 && indexN->info<=90)
+            v++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d visini", v);
+    getch();
+}
+
+
+void numar_caisi()
+{
+    int cs=0;
+    indexN=start;
+    while(indexN!=NULL)
+    {
+        if(indexN->info>=91 && indexN->info<=100)
+            cs++;
+        indexN=indexN->urm;
+    }
+    printf("Lista noastra contine %d caisi", cs);
+    getch();
+}
+
+
+int options(int disp_list)//afiseaza lista de optiuni memorate in variabila *option_lst[]; daca argumentul disp_list este TRUE(1)
+{
+    //se va afisa si lista inaintea optiunilor
+    char opt;
+    if(disp_list==TRUE)
+    {
+        if(start!=NULL)
+        {
+            printf("[%d]: ", list_count());
+            list_print();
+            printf("\n");
+        }
+    }
+    for(int i=0; i<sizeof(option_lst)/sizeof(char*); i++)
+        printf("%s\n", option_lst[i]);
+    printf("\nOptiunea este: ");
+    opt=toupper(getche());
+    printf("\n\n");
+    return opt;
+}
+
+
+void info_autor()
+{
+    printf("Nume\t\tPrenume\t\tGrupa\n");
+    printf("Pauliuc\t\tNaomi-Denisa\t3112B");
+    getch();
+}
+
+void salvare_lista(nod* start)
+{
+    nod *index_temporar;
+    FILE *f;
+
+    f=fopen("lista_pomi.txt", "wb");
+    if(f==NULL)
+    {
+        printf("Eroare la deschiderea fisierului");
+        getch();
+    }
+    else
+    {
+        index_temporar=start;
+        while(index_temporar!=NULL)
+        {
+            fwrite(index_temporar, sizeof(nod), 1, f);
+            index_temporar=index_temporar->urm;
+        }
+        fclose(f);
+    }
+}
+
+void reinitializare_lista(nod** start)
+{
+    nod POM;
+    nod *pom_tmp;
+    nod *index_temporar;
+
+    FILE *f;
+    f=fopen("lista_pomi.txt", "rb");
+
+    fread(&POM, sizeof(nod), 1, f);
+    while(!feof(f))
+    {
+        pom_tmp = (nod*)malloc(sizeof(nod));
+        pom_tmp->info=POM.info;
+        pom_tmp->urm=NULL;
+        if(*start==NULL)
+        {
+            *start=(nod*)malloc(sizeof(nod));
+            *start=pom_tmp;
+        }
+        else
+        {
+            index_temporar=*start;
+            while(index_temporar->urm!=NULL)
+                index_temporar=index_temporar->urm;
+            index_temporar->urm=pom_tmp;
+        }
+        fread(&POM, sizeof(nod), 1, f);
+    }
+    fclose(f);
+}
+
+int main()
+{
+    reinitializare_lista(&start);
+    intro1();
+    getch();
+    intro2();
+    getch();
+    system ("cls");
+    informatii();
+    getch();
+    system ("cls");
+    char opt;
+    do
+    {
+        opt=options(TRUE);
+        switch(opt)
+        {
+        case 'L':
+            if(start!=NULL)
+            {
+                printf("Deja ai plantat primul pom.");
+                getch();
+                break;
+            }
+            printf("Codul primului pom este: ");
+            scanf("%d", &x);
+            if (x>=100 || x<=0)
+            {
+                printf("Nu este un pom");
+                getch();
+                break;
+            }
+            else if (x>40 && x<51)
+            {
+                printf("Ati selectat un cocotier. Acesta nu poate fi plantat pe terenul lui George.\nVa rog sa alegeti un pom potrivit pentru solul din Romania.");
+                getch();
+                break;
+            }
+            else if(x>70 && x<81)
+            {
+                printf("Ati selectat un portocal. Acesta nu poate fi plantat pe terenul lui George.\nVa rog sa alegeti un pom potrivit pentru solul din Romania.");
+                getch();
+                break;
+            }
+            else
+            {
+                start=(nod*)malloc(sizeof(nod));
+                start->info=x;
+                start->urm=NULL;
+            }
+            salvare_lista(start);
+            if(x>0 && x<=10)
+                printf("Felicitari! Ati plantat un mar");
+            else if(x>=11 && x<=20)
+                printf("Felicitari! Ati plantat un cires");
+            else if(x>=21 && x<=30)
+                printf("Felicitari! Ati plantat un prun");
+            else if(x>=31 && x<=40)
+                printf("Felicitari! Ati plantat un gutui");
+            else if(x>=51 && x<=60)
+                printf("Felicitari! Ati plantat un par");
+            else if(x>=61 && x<=70)
+                printf("Felicitari! Ati plantat un nuc");
+            else if(x>=81 && x<=90)
+                printf("Felicitari! Ati plantat un visin");
+            else if(x>=91 && x<100)
+                printf("Felicitari! Ati plantat un cais");
+            getch();
+            break;
+
+        case 'C':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            printf("Codul pomului ce trebuie plantat este: ");
+            scanf("%d", &x);
+            if (x>=100 || x<=0)
+            {
+                printf("Nu este un pom");
+                getch();
+                break;
+            }
+            else if (x>40 && x<51)
+            {
+                printf("Ati selectat un cocotier. Acesta nu poate fi plantat pe terenul lui George.\nVa rog sa alegeti un pom potrivit pentru solul din Romania.");
+                getch();
+                break;
+            }
+            else if(x>70 && x<81)
+            {
+                printf("Ati selectat un portocal. Acesta nu poate fi plantat pe terenul lui George.\nVa rog sa alegeti un pom potrivit pentru solul din Romania.");
+                getch();
+                break;
+            }
+            else
+            {
+                tmpN=(nod*)malloc(sizeof(nod));
+                tmpN->info=x;
+                tmpN->urm=NULL;
+                indexN=start;
+                while(indexN->urm!=NULL)
+                    indexN=indexN->urm;
+                indexN->urm=tmpN;
+            }
+            salvare_lista(start);
+            if(x>0 && x<=10)
+                printf("Ati plantat un mar");
+            else if(x>=11 && x<=20)
+                printf("Ati plantat un cires");
+            else if(x>=21 && x<=30)
+                printf("Ati plantat un prun");
+            else if(x>=31 && x<=40)
+                printf("Ati plantat un gutui");
+            else if(x>=51 && x<=60)
+                printf("Ati plantat un par");
+            else if(x>=61 && x<=70)
+                printf("Ati plantat un nuc");
+            else if(x>=81 && x<=90)
+                printf("Ati plantat un visin");
+            else if(x>=91 && x<100)
+                printf("Ati plantat un cais");
+            getch();
+            break;
+
+        case 'A':// Afisare lista
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            printf("Pomii plantati sunt: ");
+            list_print();
+            getch();
+            break;
+
+        case 'S':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            printf("Pomul cautat este: ");
+            scanf("%d", &x);
+            if (x>=100 || x<=0)
+            {
+                printf("Acesta nu este un pom deci nu poate exista in lista noastra.");
+                getch();
+                break;
+            }
+            else if (x>40 && x<51)
+            {
+                printf("Ati selectat un cocotier. Acesta nu poate exista in lista.\nVa rog sa alegeti un alt pom.");
+                getch();
+                break;
+            }
+            else if(x>70 && x<81)
+            {
+                printf("Ati selectat un portocal. Acesta nu poate exista in lista.\nVa rog sa alegeti un alt pom .");
+                getch();
+                break;
+            }
+            k=0;
+            is_found=0;
+            indexN=start;
+            while(indexN!=NULL)
+            {
+                if(indexN->info==x)
+                {
+                    printf("Prima aparitie a lui %d este: %d.", x, k);
+                    is_found=1;
+                    break;
+                }
+                k++;
+                indexN=indexN->urm;
+            }
+            if(is_found==0)
+                printf("Pomul cautat nu a fost plantat inca!");
+            getch();
+            break;
+
+        case 'E':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            printf("Pozitia pomului care va fi scos este[0 - %d]: ", list_count()-1);
+            scanf("%d", &k);
+            if(k<0 || k>=list_count())
+            {
+                printf("Pozitie in afara intervalului.");
+                getch();
+                break;
+            }
+            if(k==0)
+            {
+                tmpN=start->urm;
+                free(start);
+                start=tmpN;
+            }
+            else
+            {
+                indexN=start;
+                for(int i=0; i<k-1; i++)
+                    indexN=indexN->urm;
+                tmpN=indexN->urm;
+                indexN->urm=tmpN->urm;
+                free(tmpN);
+            }
+            salvare_lista(start);
+            break;
+
+        case 'V':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_pomi();
+            getch();
+            break;
+
+        case '1':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_mg();
+            getch();
+            break;
+
+        case '2':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_mj();
+            getch();
+            break;
+
+        case '3':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_ciresi();
+            getch();
+            break;
+
+        case '4':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_pruni();
+            getch();
+            break;
+
+        case '5':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_gutui();
+            getch();
+            break;
+
+        case '6':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_peri();
+            getch();
+            break;
+
+        case '7':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_nuci();
+            getch();
+            break;
+
+        case '8':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_visini();
+            getch();
+            break;
+
+        case '9':
+            if(start==NULL)
+            {
+                printf("In primul rand, trebuie creata o lista prin plantarea primului pom.");
+                getch();
+                break;
+            }
+            else
+                numar_caisi();
+            getch();
+            break;
+
+        case '?':
+            informatii();
+            getch();
+            break;
+
+        case 'Y':
+            intro1();
+            getch();
+            intro2();
+            getch();
+            break;
+
+        case 'I':
+            info_autor();
+            getch();
+            break;
+
+        case 'X':
+            printf("La revedere! ");
+            exit(0);
+
+        default:
+            printf("\nOptiune inexistenta");
+            getch();
+            break;
+
+        }
+        system("cls");
+
+    }
+    while(opt!=0);
+    printf("\n\n");
+    return 0;
+}
